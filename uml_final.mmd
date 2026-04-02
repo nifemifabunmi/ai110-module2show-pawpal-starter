@@ -1,0 +1,55 @@
+classDiagram
+    class Owner {
+        - name: string
+        - email: string
+        - availableTime: int
+        - preferences: dict
+        - pets: list~Pet~
+        + addPet(pet: Pet): void
+        + removePet(petId: string): void
+        + updateAvailableTime(minutes: int): void
+        + getPreferences(): dict
+        + getPets(): list~Pet~
+    }
+
+    class Pet {
+        - petId: string
+        - name: string
+        - species: string
+        - age: int
+        - tasks: list~Task~
+        + addTask(task: Task): void
+        + removeTask(taskId: string): void
+        + getTasks(): list~Task~
+        + updateInfo(species: string, age: int): void
+    }
+
+    class Task {
+        - taskId: string
+        - name: string
+        - description: string
+        - duration: int
+        - priority: int
+        - notes: string
+        - isCompleted: bool
+        - petId: string
+        + markComplete(): void
+        + updatePriority(priority: int): void
+        + updateDuration(minutes: int): void
+        + getTaskInfo(): dict
+    }
+
+    class Scheduler {
+        - owner: Owner
+        - tasks: list~Task~
+        + gatherAllTasks(): list~Task~
+        + generateDailyPlan(): list~Task~
+        + filterTasksByTime(tasks: list~Task~, availableTime: int): list~Task~
+        + sortByPriority(tasks: list~Task~): list~Task~
+        + selectOptimalTasks(tasks: list~Task~, timeAvailable: int): list~Task~
+    }
+
+    Owner "1" --> "*" Pet : manages
+    Pet "1" --> "*" Task : has
+    Scheduler --> Owner : uses
+    Scheduler --> Task : schedules

@@ -69,6 +69,23 @@ Tests cover core scheduling behaviors including:
 - Conflict detection for duplicate scheduled times (`Scheduler.detect_time_conflicts()`)
 - Owner/pet task aggregation and plan generation (`Scheduler.generateDailyPlan()`)
 
-**Confidence Level:** ⭐⭐⭐⭐⭐ (5/5) based on successful `pytest` execution with no failures. 
+**Confidence Level:** ⭐⭐⭐⭐⭐ (5/5) based on successful `pytest` execution with no failures.
+
+## Features
+
+- Sorting by time (`Scheduler.sort_by_time`) to ensure chronological daily task ordering
+- Priority-based selection and daily plan generation (`Scheduler.generateDailyPlan`)
+- Recurring task handling (`Scheduler.complete_task` creates next-day/next-week task for daily/weekly tasks)
+- Conflict warnings (`Scheduler.detect_time_conflicts` emits `st.warning` messages for overlapping time slots)
+- Task filtering by completion and pet (`Scheduler.filter_tasks`)
+- Owner/pet/task models with add/remove/update and task detail retrieval
+
+## 📸 Demo
+
+In your environment, capture the Streamlit UI and save as `/course_images/ai110/pawpal_app_screenshot.png`. Then embed like this:
+
+<a href="/course_images/ai110/pawpal_app_screenshot.png" target="_blank"><img src='/course_images/ai110/pawpal_app_screenshot.png' title='PawPal App' width='' alt='PawPal App' class='center-block' /></a>
+
+*(Screenshot placeholder: replace with your actual screenshot path once captured.)* 
 
 

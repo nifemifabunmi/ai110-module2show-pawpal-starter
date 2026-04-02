@@ -1,5 +1,5 @@
 import streamlit as st
-from pawpal_system import Owner, Pet, Task
+from pawpal_system import Owner, Pet, Task, Scheduler
 
 # Initialize session state for Owner object
 if 'owner' not in st.session_state:
@@ -129,18 +129,34 @@ else:
 st.divider()
 
 st.subheader("Build Schedule")
-st.caption("This button should call your scheduling logic once you implement it.")
+st.caption("Use the scheduler to build a daily plan and show conflicts.")
 
 if st.button("Generate schedule"):
-    st.warning(
-        "Not implemented yet. Next step: create your scheduling logic (classes/functions) and call it here."
-    )
-    st.markdown(
-        """
-Suggested approach:
-1. Design your UML (draft).
-2. Create class stubs (no logic).
-3. Implement scheduling behavior.
-4. Connect your scheduler here and display results.
-"""
-    )
+    scheduler = Scheduler(owner=st.session_state.owner)
+    plan_tasks = scheduler.generateDailyPlan()
+    all_tasks = scheduler.gatherAllTasks()
+
+    # Detect conflicts across all tasks
+    conflict_messages = scheduler.detect_time_conflicts(all_tasks)
+    if conflict_messages:
+        for msg in conflict_messages:
+            st.warning(msg)
+    else:
+        st.success("No scheduling conflicts detected.")
+
+    if plan_tasks:
+        st.success("Daily plan generated successfully.")
+        plan_rows = []
+        for task in scheduler.sort_by_time(plan_tasks):
+            plan_rows.append({
+                "Task": task.name,
+                "Pet": next((p.name for p in st.session_state.owner.getPets() if p.petId == task.petId), "Unknown"),
+                "Time": task.time,
+                "Duration": f"{task.duration} min",
+                "Priority": task.priority,
+                "Completed": "Yes" if task.isCompleted else "No"
+            })
+        st.table(plan_rows)
+    else:
+        st.info("No tasks fit in the available time window (or no pending tasks exist).")
+
