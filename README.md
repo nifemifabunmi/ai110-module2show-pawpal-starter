@@ -51,6 +51,24 @@ The PawPal+ system now includes advanced scheduling features:
 - **Recurring Tasks**: Tasks can be set as "daily" or "weekly" recurring. When completed via `Scheduler.complete_task()`, a new instance is automatically created for the next occurrence using Python's `timedelta`.
 - **Conflict Detection**: The `Scheduler.detect_time_conflicts()` method identifies tasks scheduled at the same time and returns warning messages, preventing scheduling overlaps without crashing the program. This uses a lightweight dictionary-based grouping approach for efficiency. 
 
-These features enhance the system's ability to handle complex pet care schedules while maintaining readability and performance. 
+These features enhance the system's ability to handle complex pet care schedules while maintaining readability and performance.
+
+## Testing PawPal+
+
+Run the test suite with:
+
+```bash
+python -m pytest
+```
+
+Tests cover core scheduling behaviors including:
+
+- Task completion state updates (`Task.markComplete()`)
+- Time-based ordering (`Scheduler.sort_by_time()`)
+- Recurring task regeneration for `daily` tasks (`Scheduler.complete_task()`)
+- Conflict detection for duplicate scheduled times (`Scheduler.detect_time_conflicts()`)
+- Owner/pet task aggregation and plan generation (`Scheduler.generateDailyPlan()`)
+
+**Confidence Level:** ⭐⭐⭐⭐⭐ (5/5) based on successful `pytest` execution with no failures. 
 
 
