@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from typing import List, Dict
+from datetime import date, timedelta
 
 
 @dataclass
@@ -10,6 +11,9 @@ class Task:
     description: str
     duration: int  # in minutes
     priority: int  # 1-5 scale
+    time: str = ""  # Scheduled time in "HH:MM" format
+    due_date: date = field(default_factory=date.today)  # Due date
+    frequency: str = "once"  # "once", "daily", "weekly"
     notes: str = ""
     isCompleted: bool = False
     petId: str = ""  # Reference to the pet this task belongs to
@@ -34,6 +38,9 @@ class Task:
             "description": self.description,
             "duration": self.duration,
             "priority": self.priority,
+            "time": self.time,
+            "due_date": self.due_date.isoformat(),
+            "frequency": self.frequency,
             "notes": self.notes,
             "isCompleted": self.isCompleted,
             "petId": self.petId
@@ -138,6 +145,128 @@ class Scheduler:
     def sortByPriority(self, tasks: List[Task]) -> List[Task]:
         """Sort tasks by priority in descending order."""
         return sorted(tasks, key=lambda t: t.priority, reverse=True)
+    
+    def sort_by_time(self, tasks: List[Task]) -> List[Task]:
+        """Sort tasks by their scheduled time in ascending order.
+        
+        Converts the time string in "HH:MM" format to total minutes for accurate sorting.
+        
+        Args:
+            tasks: List of Task objects to sort.
+            
+        Returns:
+            A new list of tasks sorted by time.
+            
+        Example:
+            >>> tasks = [Task(time="10:00"), Task(time="08:00")]
+            >>> sorted_tasks = scheduler.sort_by_time(tasks)
+            >>> [t.time for t in sorted_tasks]
+            ['08:00', '10:00']
+        """
+        return sorted(tasks, key=lambda t: int(t.time.split(':')[0]) * 60 + int(t.time.split(':')[1]))
+    
+    def filter_tasks(self, tasks: List[Task], is_completed: bool = None, pet_name: str = None) -> List[Task]:
+        """Filter tasks by completion status and/or pet name.
+        
+        Args:
+            tasks: List of Task objects to filter.
+            is_completed: If True, return only completed tasks; if False, only pending; if None, ignore status.
+            pet_name: Name of the pet to filter tasks for; if None, ignore pet.
+            
+        Returns:
+            A filtered list of tasks matching the criteria.
+            
+        Example:
+            >>> pending_tasks = scheduler.filter_tasks(all_tasks, is_completed=False)
+            >>> buddy_tasks = scheduler.filter_tasks(all_tasks, pet_name="Buddy")
+        """
+        filtered = tasks
+        if is_completed is not None:
+            filtered = [t for t in filtered if t.isCompleted == is_completed]
+        if pet_name is not None:
+            # Find pet ID by name
+            pet_id = None
+            for pet in self.owner.pets:
+                if pet.name == pet_name:
+                    pet_id = pet.petId
+                    break
+            if pet_id is not None:
+                filtered = [t for t in filtered if t.petId == pet_id]
+        return filtered
+    
+    def complete_task(self, task: Task) -> None:
+        """Mark a task as completed and create a new recurring task if applicable.
+        
+        For recurring tasks ("daily" or "weekly"), automatically creates a new task instance
+        with an updated due date using datetime.timedelta.
+        
+        Args:
+            task: The Task object to mark as completed.
+            
+        Example:
+            >>> daily_task = Task(frequency="daily", due_date=date.today())
+            >>> scheduler.complete_task(daily_task)
+            # Creates a new task for tomorrow
+        """
+        task.markComplete()
+        if task.frequency == "daily":
+            new_due_date = task.due_date + timedelta(days=1)
+        elif task.frequency == "weekly":
+            new_due_date = task.due_date + timedelta(weeks=1)
+        else:
+            return  # No recurrence
+        
+        # Create a new task instance
+        new_task = Task(
+            taskId=f"{task.taskId}_recurring_{new_due_date.isoformat()}",
+            name=task.name,
+            description=task.description,
+            duration=task.duration,
+            priority=task.priority,
+            time=task.time,
+            due_date=new_due_date,
+            frequency=task.frequency,
+            notes=task.notes,
+            petId=task.petId
+        )
+        
+        # Add to the appropriate pet
+        for pet in self.owner.pets:
+            if pet.petId == task.petId:
+                pet.addTask(new_task)
+                break
+    
+    def detect_time_conflicts(self, tasks: List[Task]) -> List[str]:
+        """Detect tasks scheduled at the same time and return warning messages.
+        
+        Groups tasks by their time attribute and identifies any time slots with multiple tasks.
+        Returns human-readable warning messages for conflicts, without raising exceptions.
+        
+        Args:
+            tasks: List of Task objects to check for conflicts.
+            
+        Returns:
+            List of warning strings describing conflicts, empty if no conflicts.
+            
+        Example:
+            >>> conflicts = scheduler.detect_time_conflicts(all_tasks)
+            >>> for warning in conflicts:
+            ...     print(warning)
+            Warning: Multiple tasks scheduled at 12:00: Feed Pets, Vet Check for pets Buddy, Buddy
+        """
+        warnings = []
+        time_groups = {}
+        for task in tasks:
+            if task.time not in time_groups:
+                time_groups[task.time] = []
+            time_groups[task.time].append(task)
+        
+        for time, task_list in time_groups.items():
+            if len(task_list) > 1:
+                pet_names = [next((p.name for p in self.owner.pets if p.petId == t.petId), "Unknown Pet") for t in task_list]
+                task_names = [t.name for t in task_list]
+                warnings.append(f"Warning: Multiple tasks scheduled at {time}: {', '.join(task_names)} for pets {', '.join(pet_names)}")
+        return warnings
     
     def selectOptimalTasks(self, tasks: List[Task], timeAvailable: int) -> List[Task]:
         """Select the optimal set of tasks that fit within available time and maximize priority."""

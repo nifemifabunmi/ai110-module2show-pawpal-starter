@@ -1,4 +1,9 @@
 import streamlit as st
+from pawpal_system import Owner, Pet, Task
+
+# Initialize session state for Owner object
+if 'owner' not in st.session_state:
+    st.session_state.owner = Owner(name="Jordan", email="jordan@example.com")
 
 st.set_page_config(page_title="PawPal+", page_icon="🐾", layout="centered")
 
@@ -39,34 +44,87 @@ At minimum, your system should:
 st.divider()
 
 st.subheader("Quick Demo Inputs (UI only)")
-owner_name = st.text_input("Owner name", value="Jordan")
+owner_name = st.text_input("Owner name", value=st.session_state.owner.name)
+
+if st.button("Update Owner Name"):
+    st.session_state.owner.name = owner_name
+    st.success(f"Owner name updated to {owner_name}")
+
 pet_name = st.text_input("Pet name", value="Mochi")
-species = st.selectbox("Species", ["dog", "cat", "other"])
+pet_species = st.selectbox("Species", ["dog", "cat", "other"])
+pet_age = st.number_input("Pet age", min_value=0, max_value=30, value=2)
+
+if st.button("Add Pet"):
+    # Generate unique pet ID
+    pet_id = f"pet_{len(st.session_state.owner.getPets()) + 1}"
+    new_pet = Pet(petId=pet_id, name=pet_name, species=pet_species, age=pet_age)
+    st.session_state.owner.addPet(new_pet)
+    st.success(f"Added pet {pet_name} ({pet_species})")
+
+# Display current pets
+if st.session_state.owner.getPets():
+    st.markdown("### Current Pets")
+    for pet in st.session_state.owner.getPets():
+        with st.expander(f"{pet.name} ({pet.species}, {pet.age} years old)"):
+            if pet.tasks:
+                st.write("Tasks:")
+                task_data = []
+                for task in pet.tasks:
+                    task_data.append({
+                        "Name": task.name,
+                        "Description": task.description,
+                        "Duration": f"{task.duration} min",
+                        "Priority": task.priority,
+                        "Completed": "Yes" if task.isCompleted else "No"
+                    })
+                st.table(task_data)
+            else:
+                st.info("No tasks yet for this pet.")
+else:
+    st.info("No pets added yet.")
 
 st.markdown("### Tasks")
-st.caption("Add a few tasks. In your final version, these should feed into your scheduler.")
+st.caption("Add tasks to your pets. Tasks will be scheduled based on priority and time constraints.")
 
-if "tasks" not in st.session_state:
-    st.session_state.tasks = []
-
-col1, col2, col3 = st.columns(3)
-with col1:
-    task_title = st.text_input("Task title", value="Morning walk")
-with col2:
-    duration = st.number_input("Duration (minutes)", min_value=1, max_value=240, value=20)
-with col3:
-    priority = st.selectbox("Priority", ["low", "medium", "high"], index=2)
-
-if st.button("Add task"):
-    st.session_state.tasks.append(
-        {"title": task_title, "duration_minutes": int(duration), "priority": priority}
-    )
-
-if st.session_state.tasks:
-    st.write("Current tasks:")
-    st.table(st.session_state.tasks)
+# Get list of pet names for selection
+pet_options = [pet.name for pet in st.session_state.owner.getPets()]
+if not pet_options:
+    st.warning("Add a pet first before adding tasks.")
 else:
-    st.info("No tasks yet. Add one above.")
+    selected_pet_name = st.selectbox("Select pet for task", pet_options)
+    
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        task_name = st.text_input("Task name", value="Morning walk")
+        task_description = st.text_area("Task description", value="Take pet for a walk in the morning")
+    with col2:
+        task_duration = st.number_input("Duration (minutes)", min_value=1, max_value=240, value=20)
+    with col3:
+        task_priority_options = {"low": 1, "medium": 3, "high": 5}
+        priority_label = st.selectbox("Priority", list(task_priority_options.keys()), index=2)
+        task_priority = task_priority_options[priority_label]
+
+    if st.button("Add Task"):
+        # Find the selected pet
+        selected_pet = next(pet for pet in st.session_state.owner.getPets() if pet.name == selected_pet_name)
+        
+        # Generate unique task ID
+        task_id = f"task_{len(selected_pet.tasks) + 1}"
+        
+        # Create task
+        new_task = Task(
+            taskId=task_id,
+            name=task_name,
+            description=task_description,
+            duration=task_duration,
+            priority=task_priority,
+            petId=selected_pet.petId
+        )
+        
+        # Add task to pet
+        selected_pet.addTask(new_task)
+        st.success(f"Added task '{task_name}' to {selected_pet_name}")
+        st.rerun()  # Refresh to show updated tasks
 
 st.divider()
 
